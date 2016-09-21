@@ -4,15 +4,32 @@ const favicon = require('serve-favicon');
 const logger = require('morgan');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
+const session = require('express-session');
+const MongoStore = require('connect-mongo')(session);
+const passport = require('./config/passport');
+const flash = require('express-flash');
 
 const routes = require('./routes/index');
+const middleware = require('./routes/middleware');
 const users = require('./routes/users');
 
 // Set up mongoose
 const mongoose = require('mongoose');
 // You need to connect to your MongoDB here
 
+mongoose.connect('mongodb://localhost/aca-auth-starter');
+
 const app = express();
+
+app.use(session({
+  secret: 'foo',
+  store: new MongoStore({ mongooseConnection: mongoose.connection })
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.use(flash());
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -27,7 +44,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
-app.get('/protected', function(req, res, next) {
+app.get('/protected', middleware.auth, function(req, res, next) {
   return res.json('I am a protected resource!');
 });
 
